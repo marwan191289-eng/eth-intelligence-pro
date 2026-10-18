@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Market data comes from Binance public REST/WebSocket in the browser (no keys); signal logic stays pure in src/lib/engine.ts so it can be tested and later moved server-side.
