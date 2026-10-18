@@ -54,8 +54,11 @@ export type Signal = {
 
 /** Score the latest candle at index i (default last). */
 export function computeSignal(c: Candle[], i = c.length - 1): Signal {
-  const closes = c.map((x) => x.close);
-  const e9 = ema(closes, 9), e21 = ema(closes, 21), r = rsi(closes), m = macd(closes), a = atr(c);
+  if (!Number.isInteger(i) || i < 50 || i >= c.length) throw new RangeError("At least 51 candles are required");
+  const sample = c.slice(0, i + 1);
+  if (sample.some((x) => Object.values(x).some((v) => !Number.isFinite(v)) || x.low <= 0 || x.high < Math.max(x.open, x.close, x.low) || x.low > Math.min(x.open, x.close))) throw new RangeError("Invalid OHLC data");
+  const closes = sample.map((x) => x.close);
+  const e9 = ema(closes, 9), e21 = ema(closes, 21), r = rsi(closes), m = macd(closes), a = atr(sample);
   const price = closes[i];
   const reasons: string[] = [];
   let score = 0;
@@ -81,7 +84,7 @@ export function computeSignal(c: Candle[], i = c.length - 1): Signal {
 
   score = Math.max(-1, Math.min(1, score));
   const confidence = Math.round(Math.abs(score) * 100);
-  const direction: Direction = score > 0.3 ? "LONG" : score < -0.3 ? "SHORT" : "NEUTRAL";
+  const direction: Direction = a[i] <= 0 ? "NEUTRAL" : score > 0.3 ? "LONG" : score < -0.3 ? "SHORT" : "NEUTRAL";
   const av = a[i];
   const stop = direction === "SHORT" ? price + 1.5 * av : price - 1.5 * av;
   const target = direction === "SHORT" ? price - 2 * av : price + 2 * av;
@@ -91,24 +94,35 @@ export function computeSignal(c: Candle[], i = c.length - 1): Signal {
 
 /** 1% rule: position size so that hitting the stop loses exactly riskPct of equity. */
 export function positionSize(equity: number, riskPct: number, entry: number, stop: number) {
+  if (![equity, riskPct, entry, stop].every(Number.isFinite) || equity <= 0 || riskPct <= 0 || riskPct > 100 || entry <= 0 || stop <= 0) return { riskAmount: 0, qty: 0, notional: 0 };
   const riskAmount = equity * (riskPct / 100);
   const perUnit = Math.abs(entry - stop);
   const qty = perUnit > 0 ? riskAmount / perUnit : 0;
   return { riskAmount, qty, notional: qty * entry };
 }
 
-/** Walk-forward backtest: does the predicted direction match the next candle's close? */
+/** Five-minute OHLC exit; stop wins ties because intrabar order is unknown. */
+export function evaluateNextCandle(direction: Exclude<Direction, "NEUTRAL">, entry: number, stop: number, target: number, next: Candle) {
+  const hitStop = direction === "LONG" ? next.low <= stop : next.high >= stop;
+  const hitTarget = direction === "LONG" ? next.high >= target : next.low <= target;
+  const exit = hitStop ? stop : hitTarget ? target : next.close;
+  const risk = Math.abs(entry - stop);
+  return { exit, r: risk > 0 ? (direction === "LONG" ? exit - entry : entry - exit) / risk : 0, outcome: hitStop ? "stop" : hitTarget ? "target" : "timeout" };
+}
+
+/** Walk-forward, enter at the next open and exit within its five-minute candle. Fees excluded. */
 export function backtest(c: Candle[], start = 50) {
   let trades = 0, wins = 0, pnlR = 0, peak = 0, maxDD = 0;
-  for (let i = start; i < c.length - 1; i++) {
+  for (let i = Math.max(50, Number.isFinite(start) ? Math.floor(start) : 50); i < c.length - 1; i++) {
     const s = computeSignal(c, i);
     if (s.direction === "NEUTRAL") continue;
     trades++;
-    const move = c[i + 1].close - s.price;
-    const r = (s.direction === "LONG" ? move : -move) / Math.abs(s.price - s.stop);
-    const clipped = Math.max(-1, Math.min(4 / 3, r));
-    if (clipped > 0) wins++;
-    pnlR += clipped;
+    const entry = c[i + 1].open;
+    const stop = entry + (s.direction === "SHORT" ? 1 : -1) * 1.5 * s.atr;
+    const target = entry + (s.direction === "SHORT" ? -1 : 1) * 2 * s.atr;
+    const { r } = evaluateNextCandle(s.direction, entry, stop, target, c[i + 1]);
+    if (r > 0) wins++;
+    pnlR += r;
     peak = Math.max(peak, pnlR);
     maxDD = Math.max(maxDD, peak - pnlR);
   }
