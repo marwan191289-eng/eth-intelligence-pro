@@ -2,13 +2,14 @@ import { useEffect, useRef } from "react";
 import type { Candle } from "@/lib/engine";
 import { ema } from "@/lib/engine";
 
+// Resolve a CSS token to rgb() — the chart library can't parse oklch.
 function cssColor(name: string) {
-  const el = document.createElement("div");
-  el.style.color = `var(${name})`;
-  document.body.appendChild(el);
-  const c = getComputedStyle(el).color;
-  el.remove();
-  return c;
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 export default function PriceChart({ candles }: { candles: Candle[] }) {
