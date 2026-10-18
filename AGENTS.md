@@ -10,3 +10,5 @@
 <!-- LOVABLE:END -->
 
 - Market data comes from Binance public REST/WebSocket in the browser (no keys); signal logic stays pure in src/lib/engine.ts so it can be tested and later moved server-side.
+- Market connectivity is isolated in use-market-data with REST fallback, stream recovery and freshness checks so stale prices cannot open paper trades.
+- Backtests use completed five-minute candles and next-candle OHLC with conservative stop-first resolution when both exit levels are touched; this avoids claiming close-direction accuracy as trading performance.
