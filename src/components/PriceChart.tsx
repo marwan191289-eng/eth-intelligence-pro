@@ -36,6 +36,7 @@ export default function PriceChart({ candles }: { candles: Candle[] }) {
       const up = cssColor("--bull"), down = cssColor("--bear"), acc = cssColor("--primary");
       const chart = createChart(ref.current, {
         autoSize: true,
+        localization: { locale: "en-US" },
         layout: { background: { color: "transparent" }, textColor: fg, fontFamily: "JetBrains Mono" },
         grid: { vertLines: { color: grid }, horzLines: { color: grid } },
         timeScale: { timeVisible: true, borderColor: grid },
