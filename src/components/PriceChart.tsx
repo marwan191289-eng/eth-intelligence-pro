@@ -36,10 +36,10 @@ export default function PriceChart({ candles }: { candles: Candle[] }) {
       const up = cssColor("--bull"), down = cssColor("--bear"), acc = cssColor("--primary");
       const chart = createChart(ref.current, {
         autoSize: true,
-        localization: { locale: "en-US" },
+        localization: { locale: "en-US", priceFormatter: (p: number) => p.toFixed(2), timeFormatter: (t: number) => new Date(t * 1000).toISOString().slice(11, 16) },
         layout: { background: { color: "transparent" }, textColor: fg, fontFamily: "JetBrains Mono" },
         grid: { vertLines: { color: grid }, horzLines: { color: grid } },
-        timeScale: { timeVisible: true, borderColor: grid },
+        timeScale: { timeVisible: true, borderColor: grid, tickMarkFormatter: (t: number) => new Date(t * 1000).toISOString().slice(11, 16) },
         rightPriceScale: { borderColor: grid },
       });
       const series = chart.addCandlestickSeries({ upColor: up, downColor: down, wickUpColor: up, wickDownColor: down, borderVisible: false });

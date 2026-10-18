@@ -268,8 +268,8 @@ function Dashboard() {
 }
 
 function Stat({ k, v }: { k: string; v: string }) {
-  return <div><p className="text-xs text-muted-foreground">{k}</p><p className="mt-1 font-semibold" dir="ltr">{v}</p></div>;
+  return <div><p className="font-sans text-xs text-muted-foreground">{k}</p><p className="mt-1 font-semibold" dir="ltr">{v}</p></div>;
 }
 function Row({ k, v }: { k: string; v: string }) {
-  return <div className="flex justify-between"><span className="text-muted-foreground">{k}</span><span dir="ltr">{v}</span></div>;
+  return <div className="flex justify-between"><span className="font-sans text-muted-foreground">{k}</span><span dir="ltr">{v}</span></div>;
 }
